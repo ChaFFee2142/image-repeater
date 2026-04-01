@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Image Repeater</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #1a1a1a;
+            --muted: #666;
+            --border: #e5e7eb;
+            --accent: #3b82f6;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f1115;
+                --panel: #171a21;
+                --text: #e5e7eb;
+                --muted: #9ca3af;
+                --border: #2a2f3a;
+                --accent: #60a5fa;
+            }
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            height: 100vh;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .controls {
+            width: 300px;
+            padding: 24px;
+            border-right: 1px solid var(--border);
+            background: var(--panel);
+            box-sizing: border-box;
+        }
+
+        .preview {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden; /* 👈 prevents scroll */
+        }
+
+        canvas {
+            max-height: 90vh;
+            max-width: 100%;
+            width: auto;
+            height: auto;
+            border: 1px solid var(--border);
+            background: var(--panel);
+        }
+
+        /* TEXT */
+        #status {
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        /* INPUT */
+        input[type="number"] {
+            width: 100%;
+            padding: 8px 10px;
+            margin-top: 6px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+
+        input[type="number"]:focus {
+            border-color: var(--accent);
+        }
+
+        /* SLIDER */
+        input[type="range"] {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        /* BUTTONS */
+        button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            cursor: pointer;
+            transition: 0.15s;
+        }
+
+        button:hover {
+            background: var(--border);
+        }
+
+        /* DROP OVERLAY */
+        .drop-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            backdrop-filter: blur(6px);
+        }
+
+        .drop-overlay.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+<div class="controls">
+    <h3 style="margin-top:0;">Image Repeater</h3>
+    <div id="status">Drop an image</div>
+    <br>
+
+
+    <div style="margin-top:15px;">
+        <label>Margin (px)</label><br>
+        <input type="number" id="margin" value="150"><br><br>
+        <input type="range" id="marginSlider" min="0" max="500" value="150" style="width:100%;">
+    </div>
+
+    <button id="process">Apply</button>
+    <button id="download">Download</button>
+</div>
+
+<div class="preview">
+    <canvas id="canvas"></canvas>
+</div>
+
+<div class="drop-overlay" id="overlay">
+    Drop image anywhere
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const marginInput = document.getElementById('margin');
+    const overlay = document.getElementById('overlay');
+
+    let img = new Image();
+
+    marginInput.oninput = processImage;
+    const marginSlider = document.getElementById('marginSlider');
+    document.getElementById('process').onclick = processImage;
+
+    function handleFile(file) {
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            console.log('Not an image');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            img.src = reader.result;
+            console.log('Image loaded');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // --- GLOBAL DRAG EVENTS (robust version) ---
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        window.addEventListener(eventName, e => {
+            e.preventDefault();
+            overlay.classList.add('active');
+        });
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        window.addEventListener(eventName, e => {
+            e.preventDefault();
+        });
+    });
+
+    // hide overlay when leaving window
+    window.addEventListener('dragleave', e => {
+        if (e.clientX === 0 && e.clientY === 0) {
+            overlay.classList.remove('active');
+        }
+    });
+
+    // HANDLE DROP (on window, not overlay)
+    window.addEventListener('drop', e => {
+        overlay.classList.remove('active');
+
+        const file = e.dataTransfer.files[0];
+
+        if (!file || !file.type.startsWith('image/')) {
+            document.getElementById('status').innerText = 'Not an image';
+            return;
+        }
+
+        document.getElementById('status').innerText = 'Loading...';
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+    });
+
+    img.onload = () => {
+        document.getElementById('status').innerText = 'Image Loaded';
+        processImage();
+    };
+
+    // --- PROCESS ---
+
+    function processImage() {
+        if (!img.src) return;
+
+        const raw = parseInt(marginInput.value);
+        const m = Math.max(0, Math.min(raw || 0, Math.floor(img.height / 2)));
+        const w = img.width;
+        const h = img.height;
+        const newH = h - 2 * m;
+
+        canvas.width = w;
+        canvas.height = newH;
+
+        ctx.clearRect(0, 0, w, newH);
+
+        // middle
+        ctx.drawImage(img, 0, m, w, newH, 0, 0, w, newH);
+
+        const temp = document.createElement('canvas');
+        const tctx = temp.getContext('2d');
+
+        temp.width = w;
+        temp.height = m;
+
+        // bottom
+        tctx.drawImage(img, 0, h - m, w, m, 0, 0, w, m);
+
+        let gradOut = tctx.createLinearGradient(0, 0, 0, m);
+        gradOut.addColorStop(0, 'rgba(0,0,0,1)');
+        gradOut.addColorStop(1, 'rgba(0,0,0,0)');
+
+        tctx.globalCompositeOperation = 'destination-in';
+        tctx.fillStyle = gradOut;
+        tctx.fillRect(0, 0, w, m);
+
+        // top
+        tctx.globalCompositeOperation = 'source-over';
+        tctx.drawImage(img, 0, 0, w, m, 0, 0, w, m);
+
+        let gradIn = tctx.createLinearGradient(0, 0, 0, m);
+        gradIn.addColorStop(0, 'rgba(0,0,0,0)');
+        gradIn.addColorStop(1, 'rgba(0,0,0,1)');
+
+        tctx.globalCompositeOperation = 'destination-in';
+        tctx.fillStyle = gradIn;
+        tctx.fillRect(0, 0, w, m);
+
+        ctx.drawImage(temp, 0, newH - m);
+    }
+
+    // --- DOWNLOAD ---
+
+    document.getElementById('download').onclick = () => {
+        const link = document.createElement('a');
+        link.download = 'seamless.png';
+        link.href = canvas.toDataURL();
+        link.click();
+    };
+
+    // --- Slider Sync ---
+
+    // slider → input
+    marginSlider.oninput = () => {
+        marginInput.value = marginSlider.value;
+        processImage();
+    };
+
+    // input → slider
+    marginInput.oninput = () => {
+        marginSlider.value = marginInput.value;
+        processImage();
+    };
+
+    // --- Enter Download shortcut ---
+
+    marginInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // stop weird form behavior
+
+            processImage();
+
+            // trigger download
+            const link = document.createElement('a');
+            link.download = 'seamless.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+    });
+
+    status.style.color = 'var(--accent)';
+
+</script>
+
+</body>
+</html>
