@@ -48,13 +48,58 @@
             overflow: hidden; /* 👈 prevents scroll */
         }
 
-        canvas {
+        .preview-grid {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .canvas-box {
+            width: 45%;
+            height: 90vh;
             max-height: 90vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background-color: var(--panel);
+        }
+
+        .canvas-box.left canvas {
+            max-height: 90vh;
+            height: auto;
+            width: auto;
+        }
+
+        .canvas-box.right canvas {
+            width: auto;
+            height: auto;
+        }
+
+        canvas {
             max-width: 100%;
             width: auto;
             height: auto;
-            border: 1px solid var(--border);
-            background: var(--panel);
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            display: block;
+            canvas {
+                transition: opacity 0.15s ease;
+            }
+        }
+
+        .zoom-wrapper {
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        .zoom-wrapper canvas {
+            transform-origin: center;
+            cursor: zoom-in;
         }
 
         /* TEXT */
@@ -106,7 +151,7 @@
         .drop-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0, 0, 0, 0.5);
             display: none;
             align-items: center;
             justify-content: center;
@@ -117,6 +162,17 @@
 
         .drop-overlay.active {
             display: flex;
+        }
+
+        @media screen and (max-width: 1000px) {
+            .canvas-box.left {
+                display: none;
+            }
+            .canvas-box.right {
+                width: 95%;
+                margin-left: 24px;
+                margin-right: 24px;
+            }
         }
     </style>
 </head>
@@ -134,12 +190,25 @@
         <input type="range" id="marginSlider" min="0" max="500" value="150" style="width:100%;">
     </div>
 
-    <button id="process">Apply</button>
+    <div style="margin-top:15px;">
+        <label>Vertical repeats</label><br>
+        <input type="number" id="repeat" value="2" min="1" max="5">
+        <input type="range" id="repeatSlider" min="1" max="5" value="2" style="width:100%;">
+    </div>
+
     <button id="download">Download</button>
 </div>
 
-<div class="preview">
-    <canvas id="canvas"></canvas>
+<div class="preview-grid">
+    <div class="canvas-box left">
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="canvas-box right zoom-wrapper">
+        <div class="canvas-inner">
+            <canvas id="canvasRepeat"></canvas>
+        </div>
+    </div>
 </div>
 
 <div class="drop-overlay" id="overlay">
@@ -149,14 +218,30 @@
 <script>
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    const canvasRepeat = document.getElementById('canvasRepeat');
+    const ctxRepeat = canvasRepeat.getContext('2d');
     const marginInput = document.getElementById('margin');
+    const repeatInput = document.getElementById('repeat');
+    const marginSlider = document.getElementById('marginSlider');
+    const repeatSlider = document.getElementById('repeatSlider');
     const overlay = document.getElementById('overlay');
+    let fileName = 'image';
+    const EXPORT_TYPE = 'image/jpeg';
+    const EXPORT_EXT = 'jpg';
+    const JPEG_QUALITY = 0.92;
+    let hasImage = false;
+    const DEFAULT_ZOOM = 1;
+    const ZOOMED_OUT = 0.5;
+    let zoomLevel = DEFAULT_ZOOM;
+    const MIN_ZOOM = 1;
+    const MAX_ZOOM = 5;
 
     let img = new Image();
+    const zoomWrapper = document.querySelector('.zoom-wrapper');
+
 
     marginInput.oninput = processImage;
-    const marginSlider = document.getElementById('marginSlider');
-    document.getElementById('process').onclick = processImage;
+    repeatInput.oninput = processImage;
 
     function handleFile(file) {
         if (!file) return;
@@ -169,6 +254,7 @@
         const reader = new FileReader();
         reader.onload = () => {
             img.src = reader.result;
+            console.log(reader);
             console.log('Image loaded');
         };
         reader.readAsDataURL(file);
@@ -201,6 +287,12 @@
         overlay.classList.remove('active');
 
         const file = e.dataTransfer.files[0];
+        fileName = file.name.replace(/\.[^/.]+$/, "");
+
+        fileType = file.type || 'image/png';
+
+        // вытаскиваем расширение из mime
+        fileExt = fileType.split('/')[1] || 'jpg';
 
         if (!file || !file.type.startsWith('image/')) {
             document.getElementById('status').innerText = 'Not an image';
@@ -217,6 +309,15 @@
     });
 
     img.onload = () => {
+        hasImage = true;
+        document.getElementById('canvas').style.border = 'none';
+        document.getElementById('canvasRepeat').style.border = 'none';
+
+        zoomLevel = DEFAULT_ZOOM;
+
+        const canvas = zoomWrapper.querySelector('canvas');
+        canvas.style.transform = `scale(${zoomLevel})`;
+
         document.getElementById('status').innerText = 'Image Loaded';
         processImage();
     };
@@ -232,8 +333,35 @@
         const h = img.height;
         const newH = h - 2 * m;
 
+        if (m === 0) {
+            canvas.width = w;
+            canvas.height = h;
+
+            ctx.fillStyle = 'var(--panel)';
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.drawImage(img, 0, 0);
+
+            // repeat тоже обновим
+            const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
+
+            canvasRepeat.width = w;
+            canvasRepeat.height = h * repeatCount;
+
+            ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
+
+            for (let i = 0; i < repeatCount; i++) {
+                ctxRepeat.drawImage(canvas, 0, i * h);
+            }
+
+            return;
+        }
+
         canvas.width = w;
         canvas.height = newH;
+
+        ctx.fillStyle = 'var(--panel)'; // или var(--panel), если хочешь красиво
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         ctx.clearRect(0, 0, w, newH);
 
@@ -270,16 +398,35 @@
         tctx.fillRect(0, 0, w, m);
 
         ctx.drawImage(temp, 0, newH - m);
+
+        // --- REPEAT PREVIEW ---
+
+        const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
+
+        // размеры второго canvas
+        canvasRepeat.width = w;
+        canvasRepeat.height = newH * repeatCount;
+
+        ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
+
+        // рисуем повторения
+        for (let i = 0; i < repeatCount; i++) {
+            ctxRepeat.drawImage(canvas, 0, i * newH);
+        }
+
     }
 
-    // --- DOWNLOAD ---
 
-    document.getElementById('download').onclick = () => {
+    // --- Download function ---
+
+    const download = () => {
         const link = document.createElement('a');
-        link.download = 'seamless.png';
-        link.href = canvas.toDataURL();
+
+        link.download = `${fileName}.${EXPORT_EXT}`;
+        link.href = canvas.toDataURL(EXPORT_TYPE, JPEG_QUALITY);
         link.click();
     };
+
 
     // --- Slider Sync ---
 
@@ -295,23 +442,68 @@
         processImage();
     };
 
+    // slider → input
+    repeatSlider.oninput = () => {
+        repeatInput.value = repeatSlider.value;
+        processImage();
+    };
+
+    // input → slider
+    repeatInput.oninput = () => {
+        repeatSlider.value = repeatInput.value;
+        processImage();
+    };
+
+    // --- Download Button ---
+
+    document.getElementById('download').onclick = () => {
+        download()
+    };
+
     // --- Enter Download shortcut ---
 
-    marginInput.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault(); // stop weird form behavior
-
             processImage();
-
-            // trigger download
-            const link = document.createElement('a');
-            link.download = 'seamless.png';
-            link.href = canvas.toDataURL();
-            link.click();
+            download()
         }
     });
 
-    status.style.color = 'var(--accent)';
+
+    // --- Zoom ---
+
+    zoomWrapper.addEventListener('wheel', (e) => {
+        if (!hasImage) return;
+
+        e.preventDefault();
+
+        const delta = -e.deltaY;
+        const zoomStep = 0.002;
+
+        zoomLevel += delta * zoomStep;
+        zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel));
+
+        const canvas = zoomWrapper.querySelector('canvas');
+
+        canvas.style.transform = `scale(${zoomLevel}`;
+    }, {passive: false});
+
+    zoomWrapper.addEventListener('dblclick', () => {
+        const canvas = zoomWrapper.querySelector('canvas');
+
+        if (zoomLevel > 0.9) {
+            zoomLevel = ZOOMED_OUT;
+        } else {
+            zoomLevel = DEFAULT_ZOOM;
+        }
+
+        canvas.style.transform = `scale(${zoomLevel})`;
+    });
+
+
+
+
 
 </script>
 
