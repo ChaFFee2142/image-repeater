@@ -3,6 +3,7 @@
 <head>
     <title>Image Repeater</title>
     <style>
+
         :root {
             --bg: #f6f7f9;
             --panel: #ffffff;
@@ -30,6 +31,7 @@
             height: 100vh;
             background: var(--bg);
             color: var(--text);
+
         }
 
         .controls {
@@ -37,7 +39,14 @@
             padding: 24px;
             border-right: 1px solid var(--border);
             background: var(--panel);
-            box-sizing: border-box;
+        }
+
+        .controls > div {
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            background: var(--bg);
         }
 
         .preview {
@@ -45,12 +54,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            overflow: hidden; /* 👈 prevents scroll */
+            overflow: hidden;
         }
 
         .preview-grid {
             display: flex;
-            gap: 20px;
+            gap: 3%;
             width: 100%;
             justify-content: center;
             align-items: center;
@@ -69,6 +78,10 @@
             background-color: var(--panel);
         }
 
+        .canvas-box.right {
+            cursor: grab;
+        }
+
         .canvas-box.left canvas {
             max-height: 90vh;
             height: auto;
@@ -78,6 +91,7 @@
         .canvas-box.right canvas {
             width: auto;
             height: auto;
+
         }
 
         canvas {
@@ -87,10 +101,13 @@
             border: 2px solid var(--border);
             border-radius: 12px;
             display: block;
-            canvas {
-                transition: opacity 0.15s ease;
-            }
+            transition: opacity 0.1s ease-out;
         }
+
+        .canvas-box.dragging {
+            cursor: grabbing !important;
+        }
+
 
         .zoom-wrapper {
             overflow: hidden;
@@ -99,13 +116,18 @@
 
         .zoom-wrapper canvas {
             transform-origin: center;
-            cursor: zoom-in;
+
         }
 
         /* TEXT */
         #status {
             font-size: 14px;
             color: var(--muted);
+            background: var(--panel);
+        }
+
+        #status.loaded {
+            color: var(--accent);
         }
 
         /* INPUT */
@@ -113,12 +135,14 @@
             width: 100%;
             padding: 8px 10px;
             margin-top: 6px;
+            margin-bottom: 6px;
             border-radius: 8px;
             border: 1px solid var(--border);
             background: transparent;
             color: var(--text);
             font-size: 14px;
             outline: none;
+            box-sizing: border-box;
         }
 
         input[type="number"]:focus {
@@ -151,23 +175,43 @@
         .drop-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
+
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
-            color: white;
+
+            background: rgba(0,0,0,0.4);
             backdrop-filter: blur(6px);
+
+            opacity: 0;
+            pointer-events: none;
+
+            transition: opacity 0.25s ease;
+            will-change: opacity;
+            transform: translateZ(0);
         }
 
         .drop-overlay.active {
-            display: flex;
+            opacity: 1;
+            pointer-events: auto;
         }
+
+        .overlay-content {
+            position: relative;
+            z-index: 1;
+            font-size: 20px;
+            color: var(--text);
+            font-weight: 500;
+            letter-spacing: 0.2px;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
 
         @media screen and (max-width: 1000px) {
             .canvas-box.left {
                 display: none;
             }
+
             .canvas-box.right {
                 width: 95%;
                 margin-left: 24px;
@@ -186,12 +230,12 @@
 
     <div style="margin-top:15px;">
         <label>Margin (px)</label><br>
-        <input type="number" id="margin" value="150"><br><br>
-        <input type="range" id="marginSlider" min="0" max="500" value="150" style="width:100%;">
+        <input type="number" id="margin" value="150">
+        <input type="range" id="marginSlider" min="0" max="300" value="150" style="width:100%;">
     </div>
 
     <div style="margin-top:15px;">
-        <label>Vertical repeats</label><br>
+        <label>Vertical repeats (Preview)</label><br>
         <input type="number" id="repeat" value="2" min="1" max="5">
         <input type="range" id="repeatSlider" min="1" max="5" value="2" style="width:100%;">
     </div>
@@ -204,7 +248,7 @@
         <canvas id="canvas"></canvas>
     </div>
 
-    <div class="canvas-box right zoom-wrapper">
+    <div class="canvas-box right zoom-wrapper" id="canvas-box-right">
         <div class="canvas-inner">
             <canvas id="canvasRepeat"></canvas>
         </div>
@@ -212,7 +256,8 @@
 </div>
 
 <div class="drop-overlay" id="overlay">
-    Drop image anywhere
+    <div class="overlay-bg"></div>
+    <div class="overlay-content">Drop image anywhere</div>
 </div>
 
 <script>
@@ -235,6 +280,10 @@
     let zoomLevel = DEFAULT_ZOOM;
     const MIN_ZOOM = 1;
     const MAX_ZOOM = 5;
+    let isSliding = false;
+    let isDraggingCanvas = false;
+    let startY = 0;
+    let startMargin = 0;
 
     let img = new Image();
     const zoomWrapper = document.querySelector('.zoom-wrapper');
@@ -260,7 +309,9 @@
         reader.readAsDataURL(file);
     }
 
-    // --- GLOBAL DRAG EVENTS (robust version) ---
+    ///////////////////////////////////
+    //// --- Global drag events --- ///
+    ///////////////////////////////////
 
     ['dragenter', 'dragover'].forEach(eventName => {
         window.addEventListener(eventName, e => {
@@ -282,7 +333,7 @@
         }
     });
 
-    // HANDLE DROP (on window, not overlay)
+    // HANDLE DROP (on window)
     window.addEventListener('drop', e => {
         overlay.classList.remove('active');
 
@@ -319,10 +370,14 @@
         canvas.style.transform = `scale(${zoomLevel})`;
 
         document.getElementById('status').innerText = 'Image Loaded';
+        document.getElementById('status').classList.add('loaded')
         processImage();
     };
 
-    // --- PROCESS ---
+
+    ///////////////////////////////////
+    ///////// --- Process --- /////////
+    ///////////////////////////////////
 
     function processImage() {
         if (!img.src) return;
@@ -403,19 +458,23 @@
 
         const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
 
-        // размеры второго canvas
+        // Second canvas
         canvasRepeat.width = w;
         canvasRepeat.height = newH * repeatCount;
 
         ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
 
-        // рисуем повторения
         for (let i = 0; i < repeatCount; i++) {
             ctxRepeat.drawImage(canvas, 0, i * newH);
         }
 
     }
 
+
+
+    ///////////////////////////////////
+    ///////// --- Download --- ////////
+    ///////////////////////////////////
 
     // --- Download function ---
 
@@ -427,6 +486,26 @@
         link.click();
     };
 
+    // --- Download Button ---
+
+    document.getElementById('download').onclick = () => {
+        download()
+    };
+
+    // --- Enter Download shortcut ---
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault(); // stop weird form behavior
+            processImage();
+            download()
+        }
+    });
+
+
+    ///////////////////////////////////
+    //////////// --- UI --- ///////////
+    ///////////////////////////////////
 
     // --- Slider Sync ---
 
@@ -454,22 +533,6 @@
         processImage();
     };
 
-    // --- Download Button ---
-
-    document.getElementById('download').onclick = () => {
-        download()
-    };
-
-    // --- Enter Download shortcut ---
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // stop weird form behavior
-            processImage();
-            download()
-        }
-    });
-
 
     // --- Zoom ---
 
@@ -486,7 +549,7 @@
 
         const canvas = zoomWrapper.querySelector('canvas');
 
-        canvas.style.transform = `scale(${zoomLevel}`;
+        canvas.style.transform = `scale(${zoomLevel})`;
     }, {passive: false});
 
     zoomWrapper.addEventListener('dblclick', () => {
@@ -502,8 +565,50 @@
     });
 
 
+    // --- Canvas vertical dragging ---
+
+    zoomWrapper.addEventListener('pointerdown', (e) => {
+        if (!hasImage) return;
+
+        isDraggingCanvas = true;
+        startY = e.clientY;
+        startMargin = parseInt(marginInput.value) || 0;
+
+        document.getElementById('canvas-box-right').classList.add('dragging');
 
 
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (!isDraggingCanvas) return;
+
+        const delta = startY - e.clientY;
+
+        const speed = 0.5;
+
+        let newMargin = startMargin + delta * speed;
+
+        // ограничения
+        newMargin = Math.max(0, Math.min(newMargin, 300));
+
+        newMargin = Math.round(newMargin);
+
+        marginInput.value = newMargin;
+        marginSlider.value = newMargin;
+
+        processImage();
+    });
+
+    window.addEventListener('pointerup', () => {
+        if (!isDraggingCanvas) return;
+
+        isDraggingCanvas = false;
+
+        document.getElementById('canvas-box-right').classList.remove('dragging');
+
+
+        processImage();
+    });
 
 </script>
 
