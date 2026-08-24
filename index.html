@@ -23,7 +23,7 @@
             --shadow-sm: 0 1px 2px rgba(20, 25, 45, 0.08);
             --shadow-md: 0 6px 20px rgba(20, 25, 45, 0.10);
             --shadow-lg: 0 18px 48px rgba(20, 25, 45, 0.16);
-            --radius: 14px;
+            --radius: 18px;
         }
 
         /* Dark via system preference (unless user forced light) */
@@ -81,8 +81,8 @@
 
         /* ---------- Sidebar ---------- */
         .controls {
-            width: 320px;
-            flex: 0 0 320px;
+            width: 336px;
+            flex: 0 0 336px;
             padding: 20px;
             border-right: 1px solid var(--border);
             background: var(--panel);
@@ -405,11 +405,13 @@
 
         .canvas-box {
             width: 45%;
-            height: 90vh;
-            max-height: 90vh;
+            height: calc(100vh - 48px);
+            max-height: calc(100vh - 48px);
+            position: relative;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 0 16px 16px;
             overflow: hidden;
             border-radius: var(--radius);
             border: 1px solid var(--border);
@@ -423,7 +425,15 @@
         .canvas-box.left { cursor: grab; }
         .canvas-box.dragging { cursor: grabbing !important; border-color: var(--accent); }
 
-        .canvas-box.left canvas { max-height: 90vh; height: auto; width: auto; }
+        .canvas-box canvas { max-width: 100%; max-height: 100%; }
+        .canvas-box.left canvas { height: auto; width: auto; }
+        .canvas-box.right .canvas-inner {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .canvas-box.right canvas { width: auto; height: auto; }
 
         canvas {
@@ -441,6 +451,7 @@
         /* corner label on each canvas */
         .canvas-tag {
             position: absolute;
+            z-index: 3;
             top: 12px;
             font-size: 11px;
             font-weight: 600;
@@ -450,14 +461,16 @@
             border: 1px solid var(--border);
             padding: 3px 9px;
             border-radius: 999px;
+            -webkit-backdrop-filter: blur(10px) saturate(140%);
+            backdrop-filter: blur(10px) saturate(140%);
             pointer-events: none;
             box-shadow: var(--shadow-sm);
             opacity: 0;
             transition: opacity 0.2s ease;
         }
         body.has-image .canvas-tag { opacity: 1; }
-        .canvas-tag.left-tag { left: calc(24px + 6px); }
-        .canvas-tag.right-tag { right: calc(24px + 6px); }
+        .canvas-tag.left-tag,
+        .canvas-tag.right-tag { left: 12px; }
 
         /* ---------- Empty state ---------- */
         .empty-state {
@@ -558,36 +571,48 @@
            ============================================================ */
 
         :root {
-            --bg: #e7e9f2;
-            --blob-1: rgba(91, 108, 240, 0.30);
-            --blob-2: rgba(236, 72, 153, 0.16);
-            --blob-3: rgba(56, 189, 248, 0.22);
-            --blob-4: rgba(168, 85, 247, 0.16);
-            --panel: rgba(255, 255, 255, 0.55);
-            --panel-2: rgba(255, 255, 255, 0.42);
-            --track: rgba(20, 24, 40, 0.14);
-            --border: rgba(255, 255, 255, 0.70);
-            --border-strong: rgba(20, 24, 40, 0.14);
-            --glass-hi: rgba(255, 255, 255, 0.65);
-            --blur: 22px;
-            --shadow-sm: 0 1px 2px rgba(30, 35, 60, 0.10);
-            --shadow-md: 0 8px 30px rgba(30, 35, 60, 0.14);
-            --shadow-lg: 0 22px 60px rgba(30, 35, 60, 0.22);
+            --bg: #e8ebee;
+            --blob-1: rgba(112, 132, 153, 0.20);
+            --blob-2: rgba(201, 211, 220, 0.34);
+            --blob-3: rgba(145, 161, 177, 0.15);
+            --blob-4: rgba(247, 249, 251, 0.68);
+            --panel: rgba(255, 255, 255, 0.64);
+            --panel-2: rgba(255, 255, 255, 0.46);
+            --track: rgba(51, 63, 74, 0.15);
+            --text: #27313b;
+            --muted: #71808e;
+            --accent: #63748a;
+            --accent-hover: #53657b;
+            --accent-soft: rgba(99, 116, 138, 0.16);
+            --on-accent: #ffffff;
+            --border: rgba(255, 255, 255, 0.82);
+            --border-strong: rgba(51, 63, 74, 0.14);
+            --glass-hi: rgba(255, 255, 255, 0.76);
+            --blur: 24px;
+            --shadow-sm: 0 1px 2px rgba(31, 43, 53, 0.09);
+            --shadow-md: 0 10px 32px rgba(31, 43, 53, 0.13);
+            --shadow-lg: 0 24px 62px rgba(31, 43, 53, 0.19);
         }
 
         @media (prefers-color-scheme: dark) {
             :root:not([data-theme="light"]) {
-                --bg: #070810;
-                --blob-1: rgba(91, 108, 240, 0.32);
-                --blob-2: rgba(168, 85, 247, 0.26);
-                --blob-3: rgba(20, 184, 166, 0.20);
-                --blob-4: rgba(59, 130, 246, 0.22);
-                --panel: rgba(18, 22, 31, 0.55);
-                --panel-2: rgba(255, 255, 255, 0.05);
+                --bg: #0b0e12;
+                --blob-1: rgba(87, 104, 125, 0.20);
+                --blob-2: rgba(48, 61, 75, 0.26);
+                --blob-3: rgba(35, 45, 57, 0.34);
+                --blob-4: rgba(5, 7, 10, 0.55);
+                --panel: rgba(17, 22, 29, 0.68);
+                --panel-2: rgba(255, 255, 255, 0.045);
                 --track: rgba(255, 255, 255, 0.13);
                 --border: rgba(255, 255, 255, 0.12);
                 --border-strong: rgba(255, 255, 255, 0.18);
                 --glass-hi: rgba(255, 255, 255, 0.10);
+                --text: #edf1f5;
+                --muted: #9aa7b5;
+                --accent: #9bacbf;
+                --accent-hover: #b3c3d4;
+                --accent-soft: rgba(155, 172, 191, 0.18);
+                --on-accent: #0b0e12;
                 --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
                 --shadow-md: 0 10px 34px rgba(0, 0, 0, 0.50);
                 --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.62);
@@ -595,17 +620,23 @@
         }
 
         :root[data-theme="dark"] {
-            --bg: #070810;
-            --blob-1: rgba(91, 108, 240, 0.32);
-            --blob-2: rgba(168, 85, 247, 0.26);
-            --blob-3: rgba(20, 184, 166, 0.20);
-            --blob-4: rgba(59, 130, 246, 0.22);
-            --panel: rgba(18, 22, 31, 0.55);
-            --panel-2: rgba(255, 255, 255, 0.05);
+            --bg: #0b0e12;
+            --blob-1: rgba(87, 104, 125, 0.20);
+            --blob-2: rgba(48, 61, 75, 0.26);
+            --blob-3: rgba(35, 45, 57, 0.34);
+            --blob-4: rgba(5, 7, 10, 0.55);
+            --panel: rgba(17, 22, 29, 0.68);
+            --panel-2: rgba(255, 255, 255, 0.045);
             --track: rgba(255, 255, 255, 0.13);
             --border: rgba(255, 255, 255, 0.12);
             --border-strong: rgba(255, 255, 255, 0.18);
             --glass-hi: rgba(255, 255, 255, 0.10);
+            --text: #edf1f5;
+            --muted: #9aa7b5;
+            --accent: #9bacbf;
+            --accent-hover: #b3c3d4;
+            --accent-soft: rgba(155, 172, 191, 0.18);
+            --on-accent: #0b0e12;
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
             --shadow-md: 0 10px 34px rgba(0, 0, 0, 0.50);
             --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.62);
@@ -623,7 +654,7 @@
                 radial-gradient(42% 42% at 86% 18%, var(--blob-2), transparent 72%),
                 radial-gradient(48% 50% at 78% 88%, var(--blob-3), transparent 72%),
                 radial-gradient(46% 52% at 16% 90%, var(--blob-4), transparent 72%);
-            filter: saturate(118%);
+            filter: saturate(105%);
         }
 
         .controls {
@@ -767,30 +798,48 @@
                 <rect x="4" y="4" width="16" height="7" rx="1.5"/>
                 <rect x="4" y="13" width="16" height="7" rx="1.5" opacity=".5"/>
             </svg>
-            Edge dominance
+            Alpha curve
         </span>
         <div class="offset-modes seam-modes" id="seamModes">
-            <button type="button" data-blend="top" title="Top edge takes over sooner" aria-label="Top edge takes over sooner">
+            <button type="button" data-blend="top" title="Top alpha comes in sooner" aria-label="Top alpha comes in sooner">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="7 9 12 4 17 9"/>
                     <rect x="6" y="12" width="12" height="8" rx="1.5"/>
                 </svg>
                 Top
             </button>
-            <button type="button" data-blend="equal" class="active" title="Both edges stay balanced" aria-label="Both edges stay balanced">
+            <button type="button" data-blend="equal" class="active" title="Balanced alpha curve" aria-label="Balanced alpha curve">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="6" y1="9" x2="18" y2="9"/>
                     <line x1="6" y1="15" x2="18" y2="15"/>
                 </svg>
                 Both
             </button>
-            <button type="button" data-blend="bottom" title="Bottom edge remains longer" aria-label="Bottom edge remains longer">
+            <button type="button" data-blend="bottom" title="Bottom alpha remains longer" aria-label="Bottom alpha remains longer">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="6" y="4" width="12" height="8" rx="1.5"/>
                     <polyline points="7 15 12 20 17 15"/>
                 </svg>
                 Bottom
             </button>
+        </div>
+    </div>
+
+    <div class="card">
+        <span class="card-label">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M7 5h10"/>
+                <path d="M7 19h10"/>
+                <path d="M12 8v8"/>
+                <polyline points="9 11 12 8 15 11"/>
+                <polyline points="9 13 12 16 15 13"/>
+            </svg>
+            Trim from
+        </span>
+        <div class="offset-modes seam-modes" id="trimModes">
+            <button type="button" data-trim="bottom" class="active" title="Preserve the top; trim from the bottom" aria-label="Preserve the top; trim from the bottom">Bottom</button>
+            <button type="button" data-trim="both" title="Trim evenly from both ends" aria-label="Trim evenly from both ends">Both</button>
+            <button type="button" data-trim="top" title="Preserve the bottom; trim from the top" aria-label="Preserve the bottom; trim from the top">Top</button>
         </div>
     </div>
 
@@ -839,19 +888,18 @@
     </div>
 
     <div class="version-container">
-        <span class="version">v2.2.0</span>
+        <span class="version">v2.1.0</span>
     </div>
 </div>
 
 <div class="preview-grid">
-    <span class="canvas-tag left-tag">Result</span>
-    <span class="canvas-tag right-tag">Seam preview</span>
-
     <div class="canvas-box left">
+        <span class="canvas-tag left-tag">Result</span>
         <canvas id="canvas"></canvas>
     </div>
 
     <div class="canvas-box right zoom-wrapper" id="canvas-box-right">
+        <span class="canvas-tag right-tag">Seam preview</span>
         <div class="canvas-inner">
             <canvas id="canvasRepeat"></canvas>
         </div>
@@ -894,6 +942,7 @@
     const repeatSlider = document.getElementById('repeatSlider');
     const offsetModeButtons = document.querySelectorAll('#offsetModes button');
     const seamBlendButtons = document.querySelectorAll('#seamModes button');
+    const trimButtons = document.querySelectorAll('#trimModes button');
     const pbgButtons = document.querySelectorAll('#pbgModes button');
     const offsetInput = document.getElementById('offset');
     const offsetSlider = document.getElementById('offsetSlider');
@@ -921,6 +970,7 @@
     let offset = 0;
     let offsetModeValue = 'center';
     let seamBlend = 'equal'; // 'equal' | 'top' | 'bottom'
+    let trimDirection = 'bottom'; // 'bottom' | 'both' | 'top'
 
     let isDraggingCanvas = false; // right column -> margin
     let startY = 0;
@@ -1019,6 +1069,13 @@
         offsetSlider.min = -half;
         offsetSlider.max = half;
 
+        // The seam band needs a non-negative core above it.
+        const marginCap = Math.floor(img.height / 3);
+        marginSlider.max = Math.min(300, marginCap);
+        const initialMargin = Math.min(parseInt(marginInput.value) || 0, marginCap);
+        marginInput.value = initialMargin;
+        marginSlider.value = Math.min(initialMargin, parseInt(marginSlider.max));
+
         zoomWrapper.querySelector('canvas').style.transform = `scale(${zoomLevel})`;
 
         statusText.innerText = 'Image loaded';
@@ -1032,10 +1089,17 @@
 
     function getMargin() {
         const raw = parseInt(marginInput.value) || 0;
-        // Keep at least one output row: at exactly half-height the result
-        // would have zero height and cannot form a tile.
-        const cap = img.height ? Math.max(0, Math.floor((img.height - 1) / 2)) : 300;
+        // The output needs an m-tall blend band plus the source core above it.
+        const cap = img.height ? Math.max(0, Math.floor(img.height / 3)) : 300;
         return Math.max(0, Math.min(raw, cap));
+    }
+
+    // The source loses m rows to make room for the seam band. Choose whether
+    // those rows are taken from the top, split evenly, or taken from the bottom.
+    function getTrimTop(m) {
+        if (trimDirection === 'top') return m;
+        if (trimDirection === 'both') return Math.floor(m / 2);
+        return 0;
     }
 
     // Sample the source for any non-opaque pixel (sparse scan for speed).
@@ -1082,11 +1146,9 @@
     //   equal  - both edges cross-fade at the same rate
     //   top    - the top edge takes over sooner
     //   bottom - the bottom edge remains visible longer
-    // The "outgoing" strip is the final m rows of the retained middle. It must
-    // begin at h - 2m: that is the row directly above this replacement band.
-    // Blending it into the top edge lets the next tile resume at source row m
-    // without a jump.
-    function buildSeam(w, h, m) {
+    // The outgoing strip directly follows the retained core. The incoming strip
+    // is the m rows directly before it, so the next tile resumes without a jump.
+    function buildSeam(w, m, outgoingY, incomingY) {
         // a strip canvas of m rows sampled from source row sy
         const mk = (sy) => {
             const c = document.createElement('canvas');
@@ -1110,9 +1172,6 @@
             cx.globalCompositeOperation = 'source-over';
             return c;
         };
-
-        const outgoingY = h - 2 * m; // continuation of the retained middle
-        const incomingY = 0;         // image top edge
 
         const temp = document.createElement('canvas');
         temp.width = w; temp.height = m;
@@ -1164,6 +1223,9 @@
         const w = img.width;
         const h = img.height;
         const newH = h - 2 * m;
+        const trimTop = getTrimTop(m);
+        const coreStart = trimTop + m;
+        const coreH = newH - m;
 
         // Resolve offset from the selected alignment mode.
         // Center -> no shift; Top -> +m; Bottom -> -m; Custom -> user pixels.
@@ -1174,6 +1236,8 @@
 
         offsetInput.value = offset;
         offsetSlider.value = Math.max(parseInt(offsetSlider.min), Math.min(parseInt(offsetSlider.max), offset));
+        marginInput.value = m;
+        marginSlider.value = Math.min(m, parseInt(marginSlider.max));
 
         if (m === 0) {
             canvas.width = w;
@@ -1201,12 +1265,13 @@
 
         ctx.clearRect(0, 0, w, newH);
 
-        // middle
-        ctx.drawImage(img, 0, m, w, newH, 0, 0, w, newH);
+        // The retained core moves according to Trim from. The final m rows are
+        // replaced by the blend band below, preserving the seamless loop.
+        ctx.drawImage(img, 0, coreStart, w, coreH, 0, 0, w, coreH);
 
         // Seam band (blend mode chosen by the user); replace, don't overlay,
         // so alpha isn't stacked onto the middle underneath.
-        const temp = buildSeam(w, h, m);
+        const temp = buildSeam(w, m, coreStart + coreH, trimTop);
         ctx.clearRect(0, newH - m, w, m);
         ctx.drawImage(temp, 0, newH - m);
 
@@ -1360,6 +1425,14 @@
         b.onclick = () => {
             seamBlend = b.dataset.blend;
             seamBlendButtons.forEach(x => x.classList.toggle('active', x === b));
+            processImage();
+        };
+    });
+
+    trimButtons.forEach(b => {
+        b.onclick = () => {
+            trimDirection = b.dataset.trim;
+            trimButtons.forEach(x => x.classList.toggle('active', x === b));
             processImage();
         };
     });
