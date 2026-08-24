@@ -578,6 +578,7 @@
             --blob-4: rgba(247, 249, 251, 0.68);
             --panel: rgba(255, 255, 255, 0.64);
             --panel-2: rgba(255, 255, 255, 0.46);
+            --canvas-panel-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.46));
             --track: rgba(51, 63, 74, 0.15);
             --text: #27313b;
             --muted: #71808e;
@@ -603,6 +604,7 @@
                 --blob-4: rgba(5, 7, 10, 0.55);
                 --panel: rgba(17, 22, 29, 0.68);
                 --panel-2: rgba(255, 255, 255, 0.045);
+                --canvas-panel-bg: linear-gradient(145deg, rgba(31, 38, 48, 0.82), rgba(17, 22, 29, 0.70));
                 --track: rgba(255, 255, 255, 0.13);
                 --border: rgba(255, 255, 255, 0.12);
                 --border-strong: rgba(255, 255, 255, 0.18);
@@ -627,6 +629,7 @@
             --blob-4: rgba(5, 7, 10, 0.55);
             --panel: rgba(17, 22, 29, 0.68);
             --panel-2: rgba(255, 255, 255, 0.045);
+            --canvas-panel-bg: linear-gradient(145deg, rgba(31, 38, 48, 0.82), rgba(17, 22, 29, 0.70));
             --track: rgba(255, 255, 255, 0.13);
             --border: rgba(255, 255, 255, 0.12);
             --border-strong: rgba(255, 255, 255, 0.18);
@@ -654,7 +657,6 @@
                 radial-gradient(42% 42% at 86% 18%, var(--blob-2), transparent 72%),
                 radial-gradient(48% 50% at 78% 88%, var(--blob-3), transparent 72%),
                 radial-gradient(46% 52% at 16% 90%, var(--blob-4), transparent 72%);
-            filter: saturate(105%);
         }
 
         .controls {
@@ -665,13 +667,18 @@
         }
 
         .card,
-        .status,
-        .canvas-box {
+        .status {
             -webkit-backdrop-filter: blur(calc(var(--blur) * 0.8)) saturate(150%);
             backdrop-filter: blur(calc(var(--blur) * 0.8)) saturate(150%);
             box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-hi);
         }
-        .canvas-box { background: var(--panel-2); }
+        /* These are the largest surfaces in the app. Keeping them unblurred
+           avoids expensive full-panel backdrop recompositing while preserving
+           the frosted appearance through the translucent panel color. */
+        .canvas-box {
+            background: var(--canvas-panel-bg);
+            box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px rgba(255, 255, 255, 0.10);
+        }
 
         input[type="number"],
         .offset-modes button,
@@ -966,6 +973,8 @@
     const MIN_ZOOM = 1;
     const MAX_ZOOM = 5;
     const SNAP = 6; // px window for offset detents
+    // Preview-only canvas budget: export output remains full resolution.
+    const MAX_REPEAT_PREVIEW_PIXELS = 4 * 1024 * 1024;
 
     let offset = 0;
     let offsetModeValue = 'center';
@@ -980,6 +989,7 @@
     let startYLeft = 0;
     let startOffset = 0;
     let leftScaleFactor = 1;
+    let pendingProcessFrame = 0;
 
     let img = new Image();
     const zoomWrapper = document.querySelector('.zoom-wrapper');
@@ -1142,6 +1152,42 @@
         c.drawImage(tmp, 0, 0);
     }
 
+    // The repeat canvas is only a visual inspector. Downscaling it prevents a
+    // high-resolution source with several repeats from monopolizing memory.
+    function renderRepeatPreview(tileH, repeatCount, blendH = 0) {
+        const fullPixels = canvas.width * tileH * repeatCount;
+        const scale = fullPixels > MAX_REPEAT_PREVIEW_PIXELS
+            ? Math.sqrt(MAX_REPEAT_PREVIEW_PIXELS / fullPixels)
+            : 1;
+        const previewW = Math.max(1, Math.round(canvas.width * scale));
+        const previewH = Math.max(1, Math.round(tileH * repeatCount * scale));
+
+        canvasRepeat.width = previewW;
+        canvasRepeat.height = previewH;
+        ctxRepeat.clearRect(0, 0, previewW, previewH);
+        for (let i = 0; i < repeatCount; i++) {
+            const y0 = Math.round(i * tileH * scale);
+            const y1 = Math.round((i + 1) * tileH * scale);
+            ctxRepeat.drawImage(canvas, 0, 0, canvas.width, tileH, 0, y0, previewW, y1 - y0);
+        }
+        drawSeamMarkers(tileH * scale, repeatCount, previewW, blendH * scale);
+    }
+
+    // Coalesce pointer-drag updates to one full canvas rebuild per frame.
+    function scheduleProcessImage() {
+        if (pendingProcessFrame) return;
+        pendingProcessFrame = requestAnimationFrame(() => {
+            pendingProcessFrame = 0;
+            processImage();
+        });
+    }
+
+    function processImageNow() {
+        if (pendingProcessFrame) cancelAnimationFrame(pendingProcessFrame);
+        pendingProcessFrame = 0;
+        processImage();
+    }
+
     // Build the m-tall seam band that makes the tile loop. Three blend modes:
     //   equal  - both edges cross-fade at the same rate
     //   top    - the top edge takes over sooner
@@ -1247,11 +1293,7 @@
 
             // A zero-margin image has no blend band, so its boundary is the seam.
             const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
-            canvasRepeat.width = w;
-            canvasRepeat.height = h * repeatCount;
-            ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
-            for (let i = 0; i < repeatCount; i++) ctxRepeat.drawImage(canvas, 0, i * h);
-            drawSeamMarkers(h, repeatCount, w);
+            renderRepeatPreview(h, repeatCount);
 
             // Offset the result preview + download.
             shiftCanvasVertically(canvas, offset);
@@ -1278,11 +1320,7 @@
         // --- REPEAT PREVIEW (seam inspection) ---
         // Keep the preview fixed and mark the centre of each visible blend band.
         const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
-        canvasRepeat.width = w;
-        canvasRepeat.height = newH * repeatCount;
-        ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
-        for (let i = 0; i < repeatCount; i++) ctxRepeat.drawImage(canvas, 0, i * newH);
-        drawSeamMarkers(newH, repeatCount, w, m);
+        renderRepeatPreview(newH, repeatCount, m);
 
         // Offset the finished seamless tile (wrap-around) for the left preview + download.
         shiftCanvasVertically(canvas, offset);
@@ -1400,20 +1438,22 @@
 
     // Central entry point for a raw offset value: snaps to detents
     // (0 / +m / -m) and lights the matching alignment button.
-    function applyOffsetValue(raw) {
+    function applyOffsetValue(raw, reprocess = true) {
         const m = getMargin();
         let val = Math.round(raw);
 
         const detents = [[0, 'center'], [m, 'top'], [-m, 'bottom']];
         for (const [d, mode] of detents) {
             if (Math.abs(val - d) <= SNAP) {
-                setOffsetMode(mode);
+                offset = d;
+                setOffsetMode(mode, reprocess);
                 return;
             }
         }
+        offset = val;
         offsetInput.value = val;
         offsetSlider.value = Math.max(parseInt(offsetSlider.min), Math.min(parseInt(offsetSlider.max), val));
-        setOffsetMode('custom');
+        setOffsetMode('custom', reprocess);
     }
 
     offsetModeButtons.forEach(b => {
@@ -1498,7 +1538,7 @@
         marginInput.value = newMargin;
         marginSlider.value = newMargin;
         showChip(e.clientX, e.clientY, `Margin ${newMargin}px`);
-        processImage();
+        scheduleProcessImage();
     });
 
     window.addEventListener('pointerup', () => {
@@ -1506,7 +1546,7 @@
         isDraggingCanvas = false;
         document.getElementById('canvas-box-right').classList.remove('dragging');
         hideChip();
-        processImage();
+        processImageNow();
     });
 
     ///////////////////////////////////
@@ -1529,9 +1569,10 @@
         if (!isDraggingLeft) return;
         const delta = e.clientY - startYLeft; // drag down -> shift content down
         const raw = startOffset + delta * leftScaleFactor;
-        applyOffsetValue(raw);
+        applyOffsetValue(raw, false);
         const sign = offset > 0 ? '+' : '';
         showChip(e.clientX, e.clientY, `Offset ${sign}${offset}px`);
+        scheduleProcessImage();
     });
 
     window.addEventListener('pointerup', () => {
@@ -1539,7 +1580,7 @@
         isDraggingLeft = false;
         leftBox.classList.remove('dragging');
         hideChip();
-        processImage();
+        processImageNow();
     });
 
     // init slider fills on first paint
