@@ -1,68 +1,406 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Image Repeater</title>
     <style>
 
+        /* ---------- Palette (light is the base; dark overrides below) ---------- */
         :root {
-            --bg: #f6f7f9;
-            --panel: #ffffff;
-            --text: #1a1a1a;
-            --muted: #666;
-            --border: #e5e7eb;
-            --accent: #3b82f6;
+            --bg: #e9ebf1;             /* soft gray page, not blinding white */
+            --panel: #f7f8fb;          /* card / surface */
+            --panel-2: #eef0f5;        /* inset controls */
+            --track: #d9dce4;          /* slider rail */
+            --text: #23262e;
+            --muted: #737a88;
+            --border: rgba(20, 24, 40, 0.10);
+            --border-strong: rgba(20, 24, 40, 0.16);
+            --accent: #5b6cf0;
+            --accent-hover: #4a5be6;
+            --accent-soft: rgba(91, 108, 240, 0.12);
+            --on-accent: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(20, 25, 45, 0.08);
+            --shadow-md: 0 6px 20px rgba(20, 25, 45, 0.10);
+            --shadow-lg: 0 18px 48px rgba(20, 25, 45, 0.16);
+            --radius: 14px;
         }
 
+        /* Dark via system preference (unless user forced light) */
         @media (prefers-color-scheme: dark) {
-            :root {
-                --bg: #0f1115;
-                --panel: #171a21;
-                --text: #e5e7eb;
-                --muted: #9ca3af;
-                --border: #2a2f3a;
-                --accent: #60a5fa;
+            :root:not([data-theme="light"]) {
+                --bg: #0c0e13;
+                --panel: #15181f;
+                --panel-2: #1b1f28;
+                --track: #2a303c;
+                --text: #e7e9ee;
+                --muted: #8b93a3;
+                --border: rgba(255, 255, 255, 0.08);
+                --border-strong: rgba(255, 255, 255, 0.15);
+                --accent: #7c8cff;
+                --accent-hover: #8f9dff;
+                --accent-soft: rgba(124, 140, 255, 0.16);
+                --on-accent: #0c0e13;
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+                --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+                --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.55);
             }
         }
 
+        /* Dark forced by toggle */
+        :root[data-theme="dark"] {
+            --bg: #0c0e13;
+            --panel: #15181f;
+            --panel-2: #1b1f28;
+            --track: #2a303c;
+            --text: #e7e9ee;
+            --muted: #8b93a3;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-strong: rgba(255, 255, 255, 0.15);
+            --accent: #7c8cff;
+            --accent-hover: #8f9dff;
+            --accent-soft: rgba(124, 140, 255, 0.16);
+            --on-accent: #0c0e13;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+            --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.45);
+            --shadow-lg: 0 22px 60px rgba(0, 0, 0, 0.55);
+        }
+
+        * { box-sizing: border-box; }
+
         body {
             margin: 0;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
             display: flex;
             height: 100vh;
             background: var(--bg);
             color: var(--text);
-
+            -webkit-font-smoothing: antialiased;
+            transition: background 0.25s ease, color 0.25s ease;
         }
 
+        /* ---------- Sidebar ---------- */
         .controls {
-            width: 300px;
-            padding: 24px;
+            width: 320px;
+            flex: 0 0 320px;
+            padding: 20px;
             border-right: 1px solid var(--border);
             background: var(--panel);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
         }
 
-        .controls > div {
-            padding: 12px;
+        .brand {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .brand h3 {
+            margin: 0;
+            font-size: 17px;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+        }
+
+        .brand .logo {
+            width: 26px; height: 26px;
+            border-radius: 8px;
+            background: linear-gradient(140deg, var(--accent), var(--accent-hover));
+            display: grid; place-items: center;
+            color: var(--on-accent);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .icon-btn {
+            width: 34px; height: 34px;
+            padding: 0;
+            display: grid; place-items: center;
+            border-radius: 9px;
             border: 1px solid var(--border);
-            border-radius: 12px;
-            margin-bottom: 12px;
-            background: var(--bg);
+            background: var(--panel-2);
+            color: var(--muted);
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .icon-btn:hover { color: var(--text); background: var(--panel); box-shadow: var(--shadow-sm); }
+        .icon-btn:active { transform: translateY(1px) scale(0.96); }
+
+        .card {
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            background: var(--panel-2);
         }
 
-        .preview {
+        .card-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .card-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+        }
+        .card-label svg { color: var(--muted); }
+
+        /* ---------- Status ---------- */
+        .status {
+            font-size: 13px;
+            color: var(--muted);
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px dashed var(--border-strong);
+            background: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+        }
+        .status .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--muted);
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+        .status.loaded {
+            color: var(--accent);
+            border-color: transparent;
+            border-style: solid;
+            background: var(--accent-soft);
+        }
+        .status.loaded .dot {
+            background: var(--accent);
+            box-shadow: 0 0 0 4px var(--accent-soft);
+        }
+
+        /* ---------- Number inputs ---------- */
+        input[type="number"] {
+            width: 78px;
+            padding: 7px 9px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        input[type="number"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-soft);
+        }
+
+        /* ---------- Sliders ---------- */
+        .slider-wrap {
+            position: relative;
+            margin-top: 12px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 999px;
+            background: var(--track);
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track { background: transparent; height: 6px; }
+        input[type="range"]::-moz-range-track { background: transparent; height: 6px; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px; height: 18px;
+            margin-top: -6px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 2px solid var(--accent);
+            box-shadow: var(--shadow-sm);
+            cursor: grab;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: var(--panel);
+            border: 2px solid var(--accent);
+            box-shadow: var(--shadow-sm);
+            cursor: grab;
+        }
+        input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 6px var(--accent-soft); }
+        input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.15); cursor: grabbing; }
+        input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px var(--accent-soft); }
+
+        .bubble {
+            position: absolute;
+            top: -8px;
+            transform: translate(-50%, -100%) scale(0.85);
+            background: var(--accent);
+            color: var(--on-accent);
+            font-size: 11px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            padding: 3px 8px;
+            border-radius: 7px;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.12s ease, transform 0.12s ease;
+            box-shadow: var(--shadow-md);
+        }
+        .bubble::after {
+            content: '';
+            position: absolute;
+            left: 50%; top: 100%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--accent);
+        }
+        .slider-wrap:hover .bubble,
+        .slider-wrap.dragging .bubble {
+            opacity: 1;
+            transform: translate(-50%, -100%) scale(1);
+        }
+
+        /* ---------- Mode buttons ---------- */
+        .offset-modes {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        .offset-modes button {
             flex: 1;
             display: flex;
-            justify-content: center;
             align-items: center;
-            overflow: hidden;
+            justify-content: center;
+            padding: 8px 4px;
+            border-radius: 9px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted);
+            cursor: pointer;
+            transition: transform 0.08s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .offset-modes button:hover { color: var(--text); box-shadow: var(--shadow-sm); }
+        .offset-modes button:active { transform: translateY(1px) scale(0.97); }
+        .offset-modes button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--on-accent);
+            box-shadow: 0 4px 12px var(--accent-soft);
+        }
+        .offset-modes button.active:hover { background: var(--accent-hover); }
+        .offset-modes button svg { display: block; pointer-events: none; }
+
+        /* Compact, labelled choices used for the seam-layer order. */
+        .seam-modes button {
+            gap: 5px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .seam-modes button svg { width: 15px; height: 15px; }
+
+        /* Preview-only transparency backgrounds. The canvas pixels themselves
+           stay untouched, so PNG exports retain their alpha channel. */
+        .pbg-card .offset-modes button {
+            min-height: 34px;
+            border-width: 1px;
+        }
+        .pbg-card .offset-modes button.active {
+            box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-sm);
+        }
+        .swatch-checker {
+            background-color: #f3f4f6 !important;
+            background-image:
+                linear-gradient(45deg, #b8beca 25%, transparent 25%, transparent 75%, #b8beca 75%),
+                linear-gradient(45deg, #b8beca 25%, transparent 25%, transparent 75%, #b8beca 75%) !important;
+            background-size: 12px 12px !important;
+            background-position: 0 0, 6px 6px !important;
+        }
+        .swatch-white { background: #fff !important; }
+        .swatch-black { background: #111 !important; }
+
+        /* ---------- Offset row (number + reset) ---------- */
+        .offset-value-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .offset-value-row .unit { font-size: 12px; color: var(--muted); }
+
+        /* ---------- Download ---------- */
+        .download-wrap { margin-top: 4px; }
+        #download {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: none;
+            background: linear-gradient(140deg, var(--accent), var(--accent-hover));
+            color: var(--on-accent);
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 9px;
+            box-shadow: var(--shadow-md);
+            transition: transform 0.08s ease, box-shadow 0.15s ease, filter 0.15s ease;
+        }
+        #download:hover { filter: brightness(1.05); box-shadow: var(--shadow-lg); }
+        #download:active { transform: translateY(1px) scale(0.99); }
+        #download:disabled {
+            background: var(--panel-2);
+            color: var(--muted);
+            box-shadow: none;
+            cursor: not-allowed;
+            filter: none;
+        }
+        #download svg { pointer-events: none; }
+
+        .output-stamp {
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--muted);
+            font-variant-numeric: tabular-nums;
+            text-align: center;
+            min-height: 15px;
         }
 
+        .version-container {
+            margin-top: auto;
+            padding-top: 16px;
+            font-size: 12px;
+            color: var(--muted);
+            opacity: 0.7;
+        }
+        .version { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+
+        /* ---------- Preview area ---------- */
         .preview-grid {
+            position: relative;
+            flex: 1;
             display: flex;
             gap: 3%;
-            width: 100%;
             justify-content: center;
             align-items: center;
+            padding: 24px;
+            overflow: hidden;
         }
 
         .canvas-box {
@@ -73,177 +411,442 @@
             justify-content: center;
             align-items: center;
             overflow: hidden;
-            border-radius: 12px;
+            border-radius: var(--radius);
             border: 1px solid var(--border);
-            background-color: var(--panel);
+            background: var(--panel);
+            box-shadow: var(--shadow-md);
+            transition: box-shadow 0.2s ease, border-color 0.2s ease;
         }
+        body.has-image .canvas-box:hover { box-shadow: var(--shadow-lg); }
 
-        .canvas-box.right {
-            cursor: grab;
-        }
+        .canvas-box.right,
+        .canvas-box.left { cursor: grab; }
+        .canvas-box.dragging { cursor: grabbing !important; border-color: var(--accent); }
 
-        .canvas-box.left canvas {
-            max-height: 90vh;
-            height: auto;
-            width: auto;
-        }
-
-        .canvas-box.right canvas {
-            width: auto;
-            height: auto;
-
-        }
+        .canvas-box.left canvas { max-height: 90vh; height: auto; width: auto; }
+        .canvas-box.right canvas { width: auto; height: auto; }
 
         canvas {
             max-width: 100%;
             width: auto;
             height: auto;
-            border: 2px solid var(--border);
-            border-radius: 12px;
+            border-radius: 10px;
             display: block;
             transition: opacity 0.1s ease-out;
         }
 
-        .canvas-box.dragging {
-            cursor: grabbing !important;
-        }
+        .zoom-wrapper { overflow: hidden; border-radius: var(--radius); }
+        .zoom-wrapper canvas { transform-origin: center; }
 
-
-        .zoom-wrapper {
-            overflow: hidden;
-            border-radius: 12px;
-        }
-
-        .zoom-wrapper canvas {
-            transform-origin: center;
-
-        }
-
-        /* TEXT */
-        #status {
-            font-size: 14px;
+        /* corner label on each canvas */
+        .canvas-tag {
+            position: absolute;
+            top: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
             color: var(--muted);
             background: var(--panel);
+            border: 1px solid var(--border);
+            padding: 3px 9px;
+            border-radius: 999px;
+            pointer-events: none;
+            box-shadow: var(--shadow-sm);
+            opacity: 0;
+            transition: opacity 0.2s ease;
         }
+        body.has-image .canvas-tag { opacity: 1; }
+        .canvas-tag.left-tag { left: calc(24px + 6px); }
+        .canvas-tag.right-tag { right: calc(24px + 6px); }
 
-        #status.loaded {
+        /* ---------- Empty state ---------- */
+        .empty-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            text-align: center;
+            color: var(--muted);
+            pointer-events: none;
+        }
+        body.has-image .empty-state { display: none; }
+        .empty-state .drop-ring {
+            width: 96px; height: 96px;
+            border-radius: 24px;
+            display: grid; place-items: center;
             color: var(--accent);
+            background: var(--accent-soft);
+            border: 2px dashed var(--border-strong);
+            animation: float 4s ease-in-out infinite;
+        }
+        .empty-state h4 { margin: 0; font-size: 16px; color: var(--text); font-weight: 600; }
+        .empty-state p { margin: 0; font-size: 13px; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
         }
 
-        /* INPUT */
-        input[type="number"] {
-            width: 100%;
-            padding: 8px 10px;
-            margin-top: 6px;
-            margin-bottom: 6px;
+        /* ---------- Drag chip (follows cursor) ---------- */
+        #dragChip {
+            position: fixed;
+            z-index: 60;
+            top: 0; left: 0;
+            background: var(--accent);
+            color: var(--on-accent);
+            font-size: 12px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            padding: 5px 9px;
             border-radius: 8px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text);
-            font-size: 14px;
-            outline: none;
-            box-sizing: border-box;
+            pointer-events: none;
+            opacity: 0;
+            transform: translate(14px, -50%);
+            transition: opacity 0.1s ease;
+            box-shadow: var(--shadow-lg);
+            white-space: nowrap;
         }
+        #dragChip.show { opacity: 1; }
 
-        input[type="number"]:focus {
-            border-color: var(--accent);
-        }
-
-        /* SLIDER */
-        input[type="range"] {
-            width: 100%;
-            margin-top: 10px;
-        }
-
-        /* BUTTONS */
-        button {
-            margin-top: 10px;
-            padding: 8px 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: transparent;
-            color: var(--text);
-            cursor: pointer;
-            transition: 0.15s;
-        }
-
-        button:hover {
-            background: var(--border);
-        }
-
-        /* DROP OVERLAY */
+        /* ---------- Drop overlay ---------- */
         .drop-overlay {
             position: fixed;
             inset: 0;
-
             display: flex;
             align-items: center;
             justify-content: center;
-
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(6px);
-
+            background: rgba(6, 8, 14, 0.55);
+            backdrop-filter: blur(8px);
             opacity: 0;
             pointer-events: none;
-
             transition: opacity 0.25s ease;
-            will-change: opacity;
-            transform: translateZ(0);
+            z-index: 100;
         }
-
-        .drop-overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
+        .drop-overlay.active { opacity: 1; pointer-events: auto; }
         .overlay-content {
-            position: relative;
-            z-index: 1;
-            font-size: 20px;
-            color: var(--text);
-            font-weight: 500;
-            letter-spacing: 0.2px;
-            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 14px;
+            padding: 40px 56px;
+            border-radius: 20px;
+            border: 2px dashed rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            font-size: 18px;
+            font-weight: 600;
+            animation: pulse 1.6s ease-in-out infinite;
         }
-
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); border-color: rgba(255,255,255,0.4); }
+            50% { transform: scale(1.02); border-color: rgba(255,255,255,0.75); }
+        }
 
         @media screen and (max-width: 1000px) {
-            .canvas-box.left {
-                display: none;
-            }
-
+            .canvas-box.left, .canvas-tag.left-tag { display: none; }
             .canvas-box.right {
                 width: 95%;
-                margin-left: 24px;
-                margin-right: 24px;
+                margin: 0 24px;
             }
+        }
+
+        /* ============================================================
+           GLASS LAYER — frosted surfaces over a soft colored mesh.
+           Appended last so these token values win.
+           ============================================================ */
+
+        :root {
+            --bg: #e7e9f2;
+            --blob-1: rgba(91, 108, 240, 0.30);
+            --blob-2: rgba(236, 72, 153, 0.16);
+            --blob-3: rgba(56, 189, 248, 0.22);
+            --blob-4: rgba(168, 85, 247, 0.16);
+            --panel: rgba(255, 255, 255, 0.55);
+            --panel-2: rgba(255, 255, 255, 0.42);
+            --track: rgba(20, 24, 40, 0.14);
+            --border: rgba(255, 255, 255, 0.70);
+            --border-strong: rgba(20, 24, 40, 0.14);
+            --glass-hi: rgba(255, 255, 255, 0.65);
+            --blur: 22px;
+            --shadow-sm: 0 1px 2px rgba(30, 35, 60, 0.10);
+            --shadow-md: 0 8px 30px rgba(30, 35, 60, 0.14);
+            --shadow-lg: 0 22px 60px rgba(30, 35, 60, 0.22);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #070810;
+                --blob-1: rgba(91, 108, 240, 0.32);
+                --blob-2: rgba(168, 85, 247, 0.26);
+                --blob-3: rgba(20, 184, 166, 0.20);
+                --blob-4: rgba(59, 130, 246, 0.22);
+                --panel: rgba(18, 22, 31, 0.55);
+                --panel-2: rgba(255, 255, 255, 0.05);
+                --track: rgba(255, 255, 255, 0.13);
+                --border: rgba(255, 255, 255, 0.12);
+                --border-strong: rgba(255, 255, 255, 0.18);
+                --glass-hi: rgba(255, 255, 255, 0.10);
+                --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+                --shadow-md: 0 10px 34px rgba(0, 0, 0, 0.50);
+                --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.62);
+            }
+        }
+
+        :root[data-theme="dark"] {
+            --bg: #070810;
+            --blob-1: rgba(91, 108, 240, 0.32);
+            --blob-2: rgba(168, 85, 247, 0.26);
+            --blob-3: rgba(20, 184, 166, 0.20);
+            --blob-4: rgba(59, 130, 246, 0.22);
+            --panel: rgba(18, 22, 31, 0.55);
+            --panel-2: rgba(255, 255, 255, 0.05);
+            --track: rgba(255, 255, 255, 0.13);
+            --border: rgba(255, 255, 255, 0.12);
+            --border-strong: rgba(255, 255, 255, 0.18);
+            --glass-hi: rgba(255, 255, 255, 0.10);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+            --shadow-md: 0 10px 34px rgba(0, 0, 0, 0.50);
+            --shadow-lg: 0 24px 70px rgba(0, 0, 0, 0.62);
+        }
+
+        body { background: var(--bg); }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -10%;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(38% 44% at 14% 12%, var(--blob-1), transparent 72%),
+                radial-gradient(42% 42% at 86% 18%, var(--blob-2), transparent 72%),
+                radial-gradient(48% 50% at 78% 88%, var(--blob-3), transparent 72%),
+                radial-gradient(46% 52% at 16% 90%, var(--blob-4), transparent 72%);
+            filter: saturate(118%);
+        }
+
+        .controls {
+            background: var(--panel);
+            -webkit-backdrop-filter: blur(var(--blur)) saturate(165%);
+            backdrop-filter: blur(var(--blur)) saturate(165%);
+            box-shadow: inset 0 1px 0 var(--glass-hi);
+        }
+
+        .card,
+        .status,
+        .canvas-box {
+            -webkit-backdrop-filter: blur(calc(var(--blur) * 0.8)) saturate(150%);
+            backdrop-filter: blur(calc(var(--blur) * 0.8)) saturate(150%);
+            box-shadow: var(--shadow-md), inset 0 1px 0 var(--glass-hi);
+        }
+        .canvas-box { background: var(--panel-2); }
+
+        input[type="number"],
+        .offset-modes button,
+        .icon-btn {
+            -webkit-backdrop-filter: blur(8px) saturate(140%);
+            backdrop-filter: blur(8px) saturate(140%);
+        }
+        .offset-modes button.active {
+            -webkit-backdrop-filter: none;
+            backdrop-filter: none;
+        }
+
+        #download {
+            box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.38);
+        }
+        #download:hover { box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, 0.45); }
+
+        /* Transparency background — only when the source has real alpha. */
+        body.has-alpha.pbg-checker .canvas-box {
+            --checker: rgba(128, 132, 148, 0.20);
+            background-color: var(--panel-2);
+            background-image:
+                linear-gradient(45deg, var(--checker) 25%, transparent 25%, transparent 75%, var(--checker) 75%),
+                linear-gradient(45deg, var(--checker) 25%, transparent 25%, transparent 75%, var(--checker) 75%);
+            background-size: 22px 22px;
+            background-position: 0 0, 11px 11px;
+        }
+        body.has-alpha.pbg-white .canvas-box {
+            background: #fff;
+            border-color: rgba(20, 24, 40, 0.18);
+        }
+        body.has-alpha.pbg-black .canvas-box {
+            background: #111;
+            border-color: rgba(255, 255, 255, 0.24);
         }
     </style>
 </head>
-<body>
+<body class="pbg-checker">
 
 <div class="controls">
-    <h3 style="margin-top:0;">Image Repeater</h3>
-    <div id="status">Drop an image</div>
-    <br>
-
-
-    <div style="margin-top:15px;">
-        <label>Margin (px)</label><br>
-        <input type="number" id="margin" value="150">
-        <input type="range" id="marginSlider" min="0" max="300" value="150" style="width:100%;">
+    <div class="brand">
+        <h3>
+            <span class="logo">
+                <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="3" width="16" height="8" rx="2"/>
+                    <rect x="4" y="13" width="16" height="8" rx="2"/>
+                </svg>
+            </span>
+            Image Repeater
+        </h3>
+        <button id="themeToggle" class="icon-btn" title="Toggle light / dark" aria-label="Toggle theme"></button>
     </div>
 
-    <div style="margin-top:15px;">
-        <label>Vertical repeats (Preview)</label><br>
-        <input type="number" id="repeat" value="2" min="1" max="5">
-        <input type="range" id="repeatSlider" min="1" max="5" value="2" style="width:100%;">
+    <div id="status" class="status"><span class="dot"></span><span id="statusText">Drop an image to begin</span></div>
+
+    <div class="card">
+        <div class="card-row">
+            <span class="card-label">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="2"/>
+                    <line x1="4" y1="9" x2="20" y2="9"/>
+                    <line x1="4" y1="15" x2="20" y2="15"/>
+                </svg>
+                Margin
+            </span>
+            <input type="number" id="margin" value="150">
+        </div>
+        <div class="slider-wrap">
+            <input type="range" id="marginSlider" min="0" max="300" value="150">
+            <div class="bubble"></div>
+        </div>
     </div>
 
-    <button id="download">Download</button>
+    <div class="card">
+        <span class="card-label">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="4" x2="12" y2="20"/>
+                <polyline points="8 8 12 4 16 8"/>
+                <polyline points="8 16 12 20 16 16"/>
+            </svg>
+            Vertical offset
+        </span>
+        <div class="offset-modes" id="offsetModes">
+            <button type="button" data-mode="top" title="Align top">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="4" x2="20" y2="4"/>
+                    <rect x="8" y="9" width="8" height="11" rx="1.5"/>
+                </svg>
+            </button>
+            <button type="button" data-mode="center" class="active" title="Center">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <rect x="8" y="6.5" width="8" height="11" rx="1.5"/>
+                </svg>
+            </button>
+            <button type="button" data-mode="bottom" title="Align bottom">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="20" x2="20" y2="20"/>
+                    <rect x="8" y="4" width="8" height="11" rx="1.5"/>
+                </svg>
+            </button>
+            <button type="button" data-mode="custom" title="Custom offset">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="4" y1="8" x2="20" y2="8"/>
+                    <circle cx="15" cy="8" r="2.6" fill="currentColor" stroke="none"/>
+                    <line x1="4" y1="16" x2="20" y2="16"/>
+                    <circle cx="9" cy="16" r="2.6" fill="currentColor" stroke="none"/>
+                </svg>
+            </button>
+        </div>
+        <div class="offset-value-row">
+            <input type="number" id="offset" value="0">
+            <span class="unit">px</span>
+        </div>
+        <div class="slider-wrap">
+            <input type="range" id="offsetSlider" min="-500" max="500" value="0">
+            <div class="bubble"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <span class="card-label">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="4" y="4" width="16" height="7" rx="1.5"/>
+                <rect x="4" y="13" width="16" height="7" rx="1.5" opacity=".5"/>
+            </svg>
+            Edge dominance
+        </span>
+        <div class="offset-modes seam-modes" id="seamModes">
+            <button type="button" data-blend="top" title="Top edge takes over sooner" aria-label="Top edge takes over sooner">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="7 9 12 4 17 9"/>
+                    <rect x="6" y="12" width="12" height="8" rx="1.5"/>
+                </svg>
+                Top
+            </button>
+            <button type="button" data-blend="equal" class="active" title="Both edges stay balanced" aria-label="Both edges stay balanced">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="6" y1="9" x2="18" y2="9"/>
+                    <line x1="6" y1="15" x2="18" y2="15"/>
+                </svg>
+                Both
+            </button>
+            <button type="button" data-blend="bottom" title="Bottom edge remains longer" aria-label="Bottom edge remains longer">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="6" y="4" width="12" height="8" rx="1.5"/>
+                    <polyline points="7 15 12 20 17 15"/>
+                </svg>
+                Bottom
+            </button>
+        </div>
+    </div>
+
+    <div class="card pbg-card">
+        <span class="card-label">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <path d="M3 15l5-4 4 3 3-2 6 4"/>
+            </svg>
+            Preview background
+        </span>
+        <div class="offset-modes" id="pbgModes">
+            <button type="button" data-bg="checker" class="active swatch-checker" title="Checkerboard" aria-label="Checkerboard background"></button>
+            <button type="button" data-bg="white" class="swatch-white" title="White" aria-label="White background"></button>
+            <button type="button" data-bg="black" class="swatch-black" title="Black" aria-label="Black background"></button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-row">
+            <span class="card-label">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="5" y="3" width="14" height="7" rx="1.5"/>
+                    <rect x="5" y="14" width="14" height="7" rx="1.5"/>
+                </svg>
+                Repeats <span style="color:var(--muted);font-weight:500;">(preview)</span>
+            </span>
+            <input type="number" id="repeat" value="2" min="1" max="5">
+        </div>
+        <div class="slider-wrap">
+            <input type="range" id="repeatSlider" min="1" max="5" value="2">
+            <div class="bubble"></div>
+        </div>
+    </div>
+
+    <div class="download-wrap">
+        <button id="download" disabled>
+            <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 4v11"/>
+                <polyline points="7 11 12 16 17 11"/>
+                <path d="M5 20h14"/>
+            </svg>
+            Download
+        </button>
+        <div class="output-stamp" id="outputStamp"></div>
+    </div>
+
+    <div class="version-container">
+        <span class="version">v2.2.0</span>
+    </div>
 </div>
 
 <div class="preview-grid">
+    <span class="canvas-tag left-tag">Result</span>
+    <span class="canvas-tag right-tag">Seam preview</span>
+
     <div class="canvas-box left">
         <canvas id="canvas"></canvas>
     </div>
@@ -253,12 +856,32 @@
             <canvas id="canvasRepeat"></canvas>
         </div>
     </div>
+
+    <div class="empty-state">
+        <div class="drop-ring">
+            <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="3"/>
+                <circle cx="8.5" cy="8.5" r="1.6"/>
+                <path d="M21 15l-5-5L5 21"/>
+            </svg>
+        </div>
+        <h4>Drop an image to begin</h4>
+        <p>Drag &amp; drop anywhere — margin, offset and repeats update live</p>
+    </div>
 </div>
 
 <div class="drop-overlay" id="overlay">
-    <div class="overlay-bg"></div>
-    <div class="overlay-content">Drop image anywhere</div>
+    <div class="overlay-content">
+        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 16V4"/>
+            <polyline points="7 9 12 4 17 9"/>
+            <path d="M5 20h14"/>
+        </svg>
+        Drop image anywhere
+    </div>
 </div>
+
+<div id="dragChip"></div>
 
 <script>
     const canvas = document.getElementById('canvas');
@@ -269,45 +892,78 @@
     const repeatInput = document.getElementById('repeat');
     const marginSlider = document.getElementById('marginSlider');
     const repeatSlider = document.getElementById('repeatSlider');
+    const offsetModeButtons = document.querySelectorAll('#offsetModes button');
+    const seamBlendButtons = document.querySelectorAll('#seamModes button');
+    const pbgButtons = document.querySelectorAll('#pbgModes button');
+    const offsetInput = document.getElementById('offset');
+    const offsetSlider = document.getElementById('offsetSlider');
     const overlay = document.getElementById('overlay');
+    const statusEl = document.getElementById('status');
+    const statusText = document.getElementById('statusText');
+    const downloadBtn = document.getElementById('download');
+    const outputStamp = document.getElementById('outputStamp');
+    const dragChip = document.getElementById('dragChip');
+    const themeToggle = document.getElementById('themeToggle');
+
     let fileName = 'image';
-    const EXPORT_TYPE = 'image/jpeg';
-    const EXPORT_EXT = 'jpg';
+    let exportType = 'image/jpeg';
+    let exportExt = 'jpg';
     const JPEG_QUALITY = 0.92;
     let hasImage = false;
+    let hasAlpha = false;
     const DEFAULT_ZOOM = 1;
     const ZOOMED_OUT = 0.5;
     let zoomLevel = DEFAULT_ZOOM;
     const MIN_ZOOM = 1;
     const MAX_ZOOM = 5;
-    let isSliding = false;
-    let isDraggingCanvas = false;
+    const SNAP = 6; // px window for offset detents
+
+    let offset = 0;
+    let offsetModeValue = 'center';
+    let seamBlend = 'equal'; // 'equal' | 'top' | 'bottom'
+
+    let isDraggingCanvas = false; // right column -> margin
     let startY = 0;
     let startMargin = 0;
+
+    let isDraggingLeft = false;   // left column -> offset
+    let startYLeft = 0;
+    let startOffset = 0;
+    let leftScaleFactor = 1;
 
     let img = new Image();
     const zoomWrapper = document.querySelector('.zoom-wrapper');
 
+    ///////////////////////////////////
+    /////////// --- Theme --- /////////
+    ///////////////////////////////////
 
-    marginInput.oninput = processImage;
-    repeatInput.oninput = processImage;
+    const SUN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><line x1="12" y1="2.5" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="21.5"/><line x1="2.5" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="21.5" y2="12"/><line x1="5.2" y1="5.2" x2="7" y2="7"/><line x1="17" y1="17" x2="18.8" y2="18.8"/><line x1="5.2" y1="18.8" x2="7" y2="17"/><line x1="17" y1="7" x2="18.8" y2="5.2"/></svg>';
+    const MOON = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z"/></svg>';
 
-    function handleFile(file) {
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            console.log('Not an image');
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = () => {
-            img.src = reader.result;
-            console.log(reader);
-            console.log('Image loaded');
-        };
-        reader.readAsDataURL(file);
+    function prefersDark() { return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches; }
+    function isDark() {
+        const t = document.documentElement.getAttribute('data-theme');
+        if (t) return t === 'dark';
+        return prefersDark();
     }
+    function updateThemeIcon() { themeToggle.innerHTML = isDark() ? SUN : MOON; }
+
+    (function initTheme() {
+        try {
+            const saved = localStorage.getItem('ir-theme');
+            if (saved) document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {}
+        updateThemeIcon();
+    })();
+
+    themeToggle.onclick = () => {
+        const next = isDark() ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('ir-theme', next); } catch (e) {}
+        updateThemeIcon();
+        if (hasImage) processImage(); // recolor seam markers for the new accent
+    };
 
     ///////////////////////////////////
     //// --- Global drag events --- ///
@@ -321,59 +977,181 @@
     });
 
     ['dragleave', 'drop'].forEach(eventName => {
-        window.addEventListener(eventName, e => {
-            e.preventDefault();
-        });
+        window.addEventListener(eventName, e => e.preventDefault());
     });
 
-    // hide overlay when leaving window
     window.addEventListener('dragleave', e => {
-        if (e.clientX === 0 && e.clientY === 0) {
-            overlay.classList.remove('active');
-        }
+        if (e.clientX === 0 && e.clientY === 0) overlay.classList.remove('active');
     });
 
-    // HANDLE DROP (on window)
     window.addEventListener('drop', e => {
         overlay.classList.remove('active');
 
         const file = e.dataTransfer.files[0];
-        fileName = file.name.replace(/\.[^/.]+$/, "");
-
-        fileType = file.type || 'image/png';
-
-        // вытаскиваем расширение из mime
-        fileExt = fileType.split('/')[1] || 'jpg';
-
         if (!file || !file.type.startsWith('image/')) {
-            document.getElementById('status').innerText = 'Not an image';
+            statusText.innerText = 'Not an image';
             return;
         }
 
-        document.getElementById('status').innerText = 'Loading...';
+        fileName = file.name.replace(/\.[^/.]+$/, "");
+        statusText.innerText = 'Loading…';
 
         const reader = new FileReader();
-        reader.onload = () => {
-            img.src = reader.result;
-        };
+        reader.onload = () => { img.src = reader.result; };
         reader.readAsDataURL(file);
     });
 
     img.onload = () => {
         hasImage = true;
-        document.getElementById('canvas').style.border = 'none';
-        document.getElementById('canvasRepeat').style.border = 'none';
+        document.body.classList.add('has-image');
+        downloadBtn.disabled = false;
+
+        // Detect real transparency -> keep alpha by exporting PNG (JPEG can't).
+        hasAlpha = detectAlpha();
+        exportType = hasAlpha ? 'image/png' : 'image/jpeg';
+        exportExt = hasAlpha ? 'png' : 'jpg';
+        document.body.classList.toggle('has-alpha', hasAlpha);
 
         zoomLevel = DEFAULT_ZOOM;
 
-        const canvas = zoomWrapper.querySelector('canvas');
-        canvas.style.transform = `scale(${zoomLevel})`;
+        // Offset can span the full image height in either direction.
+        const half = Math.floor(img.height / 2);
+        offsetSlider.min = -half;
+        offsetSlider.max = half;
 
-        document.getElementById('status').innerText = 'Image Loaded';
-        document.getElementById('status').classList.add('loaded')
+        zoomWrapper.querySelector('canvas').style.transform = `scale(${zoomLevel})`;
+
+        statusText.innerText = 'Image loaded';
+        statusEl.classList.add('loaded');
         processImage();
     };
 
+    ///////////////////////////////////
+    ///////// --- Helpers --- /////////
+    ///////////////////////////////////
+
+    function getMargin() {
+        const raw = parseInt(marginInput.value) || 0;
+        // Keep at least one output row: at exactly half-height the result
+        // would have zero height and cannot form a tile.
+        const cap = img.height ? Math.max(0, Math.floor((img.height - 1) / 2)) : 300;
+        return Math.max(0, Math.min(raw, cap));
+    }
+
+    // Sample the source for any non-opaque pixel (sparse scan for speed).
+    function detectAlpha() {
+        try {
+            const t = document.createElement('canvas');
+            t.width = img.width;
+            t.height = img.height;
+            const tc = t.getContext('2d');
+            tc.drawImage(img, 0, 0);
+            const data = tc.getImageData(0, 0, img.width, img.height).data;
+            const step = Math.max(1, Math.floor((img.width * img.height) / 150000)) * 4;
+            for (let i = 3; i < data.length; i += step) {
+                if (data[i] < 250) return true;
+            }
+        } catch (e) {
+            return false; // e.g. tainted canvas — assume opaque
+        }
+        return false;
+    }
+
+    // Cyclically shift a finished (already seamless) tile vertically.
+    // Applied AFTER blending, so the seam is untouched: a wrap-around shift
+    // of a seamless tile is still seamless, so repeatability is preserved.
+    function shiftCanvasVertically(cnv, off) {
+        const H = cnv.height;
+        const W = cnv.width;
+        const o = ((off % H) + H) % H;
+        if (o === 0) return;
+
+        const tmp = document.createElement('canvas');
+        tmp.width = W;
+        tmp.height = H;
+        const tctx = tmp.getContext('2d');
+        tctx.drawImage(cnv, 0, o);
+        tctx.drawImage(cnv, 0, o - H);
+
+        const c = cnv.getContext('2d');
+        c.clearRect(0, 0, W, H);
+        c.drawImage(tmp, 0, 0);
+    }
+
+    // Build the m-tall seam band that makes the tile loop. Three blend modes:
+    //   equal  - both edges cross-fade at the same rate
+    //   top    - the top edge takes over sooner
+    //   bottom - the bottom edge remains visible longer
+    // The "outgoing" strip is the final m rows of the retained middle. It must
+    // begin at h - 2m: that is the row directly above this replacement band.
+    // Blending it into the top edge lets the next tile resume at source row m
+    // without a jump.
+    function buildSeam(w, h, m) {
+        // a strip canvas of m rows sampled from source row sy
+        const mk = (sy) => {
+            const c = document.createElement('canvas');
+            c.width = w; c.height = m;
+            c.getContext('2d').drawImage(img, 0, sy, w, m, 0, 0, w, m);
+            return c;
+        };
+        // Scale a strip's alpha by a vertical gradient. Several stops make the
+        // top/bottom-biased transition curves visibly distinct for opaque JPEGs.
+        const fade = (c, alphaAt) => {
+            const cx = c.getContext('2d');
+            const g = cx.createLinearGradient(0, 0, 0, m);
+            const steps = 16;
+            for (let i = 0; i <= steps; i++) {
+                const t = i / steps;
+                g.addColorStop(t, `rgba(0,0,0,${alphaAt(t)})`);
+            }
+            cx.globalCompositeOperation = 'destination-in';
+            cx.fillStyle = g;
+            cx.fillRect(0, 0, w, m);
+            cx.globalCompositeOperation = 'source-over';
+            return c;
+        };
+
+        const outgoingY = h - 2 * m; // continuation of the retained middle
+        const incomingY = 0;         // image top edge
+
+        const temp = document.createElement('canvas');
+        temp.width = w; temp.height = m;
+        const tctx = temp.getContext('2d');
+
+        const topWeight = (t) => {
+            if (seamBlend === 'top') return 1 - (1 - t) * (1 - t); // ease out
+            if (seamBlend === 'bottom') return t * t;               // ease in
+            return t;
+        };
+
+        // Add premultiplied, complementary alpha contributions. Unlike normal
+        // source-over stacking, this never builds extra opacity in PNG seams.
+        tctx.drawImage(fade(mk(outgoingY), t => 1 - topWeight(t)), 0, 0);
+        tctx.globalCompositeOperation = 'lighter';
+        tctx.drawImage(fade(mk(incomingY), topWeight), 0, 0);
+        return temp;
+    }
+
+    // Small triangular ticks at the centre of each blend band. The band occupies
+    // the final `blendH` rows of a tile, not the boundary below it.
+    function drawSeamMarkers(tileH, count, w, blendH = 0) {
+        if (count < 2) return;
+        const acc = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#7c8cff';
+        const s = Math.max(6, Math.min(16, w * 0.05));
+        ctxRepeat.save();
+        ctxRepeat.fillStyle = acc;
+        ctxRepeat.globalAlpha = 0.92;
+        for (let i = 1; i < count; i++) {
+            const y = i * tileH - blendH / 2;
+            ctxRepeat.beginPath();
+            ctxRepeat.moveTo(0, y - s); ctxRepeat.lineTo(0, y + s); ctxRepeat.lineTo(s, y);
+            ctxRepeat.closePath(); ctxRepeat.fill();
+            ctxRepeat.beginPath();
+            ctxRepeat.moveTo(w, y - s); ctxRepeat.lineTo(w, y + s); ctxRepeat.lineTo(w - s, y);
+            ctxRepeat.closePath(); ctxRepeat.fill();
+        }
+        ctxRepeat.restore();
+    }
 
     ///////////////////////////////////
     ///////// --- Process --- /////////
@@ -382,233 +1160,317 @@
     function processImage() {
         if (!img.src) return;
 
-        const raw = parseInt(marginInput.value);
-        const m = Math.max(0, Math.min(raw || 0, Math.floor(img.height / 2)));
+        const m = getMargin();
         const w = img.width;
         const h = img.height;
         const newH = h - 2 * m;
 
+        // Resolve offset from the selected alignment mode.
+        // Center -> no shift; Top -> +m; Bottom -> -m; Custom -> user pixels.
+        if (offsetModeValue === 'center') offset = 0;
+        else if (offsetModeValue === 'top') offset = m;
+        else if (offsetModeValue === 'bottom') offset = -m;
+        else offset = parseInt(offsetInput.value) || 0;
+
+        offsetInput.value = offset;
+        offsetSlider.value = Math.max(parseInt(offsetSlider.min), Math.min(parseInt(offsetSlider.max), offset));
+
         if (m === 0) {
             canvas.width = w;
             canvas.height = h;
-
-            ctx.fillStyle = 'var(--panel)';
-            ctx.fillRect(0, 0, w, h);
-
+            ctx.clearRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0);
 
-            // repeat тоже обновим
+            // A zero-margin image has no blend band, so its boundary is the seam.
             const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
-
             canvasRepeat.width = w;
             canvasRepeat.height = h * repeatCount;
-
             ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
+            for (let i = 0; i < repeatCount; i++) ctxRepeat.drawImage(canvas, 0, i * h);
+            drawSeamMarkers(h, repeatCount, w);
 
-            for (let i = 0; i < repeatCount; i++) {
-                ctxRepeat.drawImage(canvas, 0, i * h);
-            }
+            // Offset the result preview + download.
+            shiftCanvasVertically(canvas, offset);
 
+            afterProcess();
             return;
         }
 
         canvas.width = w;
         canvas.height = newH;
 
-        ctx.fillStyle = 'var(--panel)'; // или var(--panel), если хочешь красиво
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
         ctx.clearRect(0, 0, w, newH);
 
         // middle
         ctx.drawImage(img, 0, m, w, newH, 0, 0, w, newH);
 
-        const temp = document.createElement('canvas');
-        const tctx = temp.getContext('2d');
-
-        temp.width = w;
-        temp.height = m;
-
-        // bottom
-        tctx.drawImage(img, 0, h - m, w, m, 0, 0, w, m);
-
-        let gradOut = tctx.createLinearGradient(0, 0, 0, m);
-        gradOut.addColorStop(0, 'rgba(0,0,0,1)');
-        gradOut.addColorStop(1, 'rgba(0,0,0,0)');
-
-        tctx.globalCompositeOperation = 'destination-in';
-        tctx.fillStyle = gradOut;
-        tctx.fillRect(0, 0, w, m);
-
-        // top
-        tctx.globalCompositeOperation = 'source-over';
-        tctx.drawImage(img, 0, 0, w, m, 0, 0, w, m);
-
-        let gradIn = tctx.createLinearGradient(0, 0, 0, m);
-        gradIn.addColorStop(0, 'rgba(0,0,0,0)');
-        gradIn.addColorStop(1, 'rgba(0,0,0,1)');
-
-        tctx.globalCompositeOperation = 'destination-in';
-        tctx.fillStyle = gradIn;
-        tctx.fillRect(0, 0, w, m);
-
+        // Seam band (blend mode chosen by the user); replace, don't overlay,
+        // so alpha isn't stacked onto the middle underneath.
+        const temp = buildSeam(w, h, m);
+        ctx.clearRect(0, newH - m, w, m);
         ctx.drawImage(temp, 0, newH - m);
 
-        // --- REPEAT PREVIEW ---
-
+        // --- REPEAT PREVIEW (seam inspection) ---
+        // Keep the preview fixed and mark the centre of each visible blend band.
         const repeatCount = Math.max(1, parseInt(repeatInput.value) || 1);
-
-        // Second canvas
         canvasRepeat.width = w;
         canvasRepeat.height = newH * repeatCount;
-
         ctxRepeat.clearRect(0, 0, canvasRepeat.width, canvasRepeat.height);
+        for (let i = 0; i < repeatCount; i++) ctxRepeat.drawImage(canvas, 0, i * newH);
+        drawSeamMarkers(newH, repeatCount, w, m);
 
-        for (let i = 0; i < repeatCount; i++) {
-            ctxRepeat.drawImage(canvas, 0, i * newH);
-        }
+        // Offset the finished seamless tile (wrap-around) for the left preview + download.
+        shiftCanvasVertically(canvas, offset);
 
+        afterProcess();
     }
 
+    function afterProcess() {
+        refreshSliders();
+        outputStamp.textContent = `${canvas.width} × ${canvas.height}px · ${exportExt.toUpperCase()}`;
+    }
 
+    ///////////////////////////////////
+    ////// --- Slider visuals --- /////
+    ///////////////////////////////////
+
+    function refreshSliders() {
+        [marginSlider, offsetSlider, repeatSlider].forEach(updateSlider);
+    }
+
+    function updateSlider(el) {
+        const min = parseFloat(el.min), max = parseFloat(el.max);
+        const p = max === min ? 0 : (parseFloat(el.value) - min) / (max - min);
+        const pct = Math.max(0, Math.min(1, p)) * 100;
+        el.style.background = `linear-gradient(to right, var(--accent) 0 ${pct}%, var(--track) ${pct}% 100%)`;
+
+        const wrap = el.closest('.slider-wrap');
+        if (!wrap) return;
+        const bub = wrap.querySelector('.bubble');
+        if (!bub) return;
+        bub.textContent = el.value;
+        const thumb = 18;
+        const x = thumb / 2 + (pct / 100) * (el.clientWidth - thumb);
+        bub.style.left = x + 'px';
+    }
+
+    // show the bubble while actually dragging a slider thumb
+    [marginSlider, offsetSlider, repeatSlider].forEach(el => {
+        const wrap = el.closest('.slider-wrap');
+        el.addEventListener('pointerdown', () => wrap.classList.add('dragging'));
+    });
+    window.addEventListener('pointerup', () => {
+        document.querySelectorAll('.slider-wrap.dragging').forEach(w => w.classList.remove('dragging'));
+    });
 
     ///////////////////////////////////
     ///////// --- Download --- ////////
     ///////////////////////////////////
 
-    // --- Download function ---
-
     const download = () => {
+        if (!hasImage) return;
         const link = document.createElement('a');
-
-        link.download = `${fileName}.${EXPORT_EXT}`;
-        link.href = canvas.toDataURL(EXPORT_TYPE, JPEG_QUALITY);
+        link.download = `${fileName}.${exportExt}`;
+        link.href = canvas.toDataURL(exportType, JPEG_QUALITY);
         link.click();
     };
 
-    // --- Download Button ---
-
-    document.getElementById('download').onclick = () => {
-        download()
-    };
-
-    // --- Enter Download shortcut ---
+    downloadBtn.onclick = download;
 
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault(); // stop weird form behavior
+        // Enter -> re-render + download
+        if (e.key === 'Enter' && hasImage) {
+            e.preventDefault();
             processImage();
-            download()
+            download();
+            return;
+        }
+        // Shift + Arrow on a number field -> nudge by 10
+        if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            const t = e.target;
+            if (t === marginInput || t === offsetInput || t === repeatInput) {
+                e.preventDefault();
+                const step = e.key === 'ArrowUp' ? 10 : -10;
+                if (t === offsetInput) {
+                    applyOffsetValue((parseInt(offsetInput.value) || 0) + step);
+                } else {
+                    t.value = (parseInt(t.value) || 0) + step;
+                    t.dispatchEvent(new Event('input'));
+                }
+            }
         }
     });
 
-
     ///////////////////////////////////
-    //////////// --- UI --- ///////////
+    ///// --- Margin controls --- /////
     ///////////////////////////////////
 
-    // --- Slider Sync ---
-
-    // slider → input
     marginSlider.oninput = () => {
         marginInput.value = marginSlider.value;
         processImage();
     };
-
-    // input → slider
     marginInput.oninput = () => {
         marginSlider.value = marginInput.value;
         processImage();
     };
 
-    // slider → input
     repeatSlider.oninput = () => {
         repeatInput.value = repeatSlider.value;
         processImage();
     };
-
-    // input → slider
     repeatInput.oninput = () => {
         repeatSlider.value = repeatInput.value;
         processImage();
     };
 
+    ///////////////////////////////////
+    ///// --- Offset controls --- /////
+    ///////////////////////////////////
 
-    // --- Zoom ---
+    function setOffsetMode(mode, reprocess = true) {
+        offsetModeValue = mode;
+        offsetModeButtons.forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+        if (reprocess) processImage();
+    }
+
+    // Central entry point for a raw offset value: snaps to detents
+    // (0 / +m / -m) and lights the matching alignment button.
+    function applyOffsetValue(raw) {
+        const m = getMargin();
+        let val = Math.round(raw);
+
+        const detents = [[0, 'center'], [m, 'top'], [-m, 'bottom']];
+        for (const [d, mode] of detents) {
+            if (Math.abs(val - d) <= SNAP) {
+                setOffsetMode(mode);
+                return;
+            }
+        }
+        offsetInput.value = val;
+        offsetSlider.value = Math.max(parseInt(offsetSlider.min), Math.min(parseInt(offsetSlider.max), val));
+        setOffsetMode('custom');
+    }
+
+    offsetModeButtons.forEach(b => {
+        b.onclick = () => setOffsetMode(b.dataset.mode);
+    });
+
+    // Seam blend mode
+    seamBlendButtons.forEach(b => {
+        b.onclick = () => {
+            seamBlend = b.dataset.blend;
+            seamBlendButtons.forEach(x => x.classList.toggle('active', x === b));
+            processImage();
+        };
+    });
+
+    // Preview background (transparent PNGs only; preview-only, export stays clear)
+    pbgButtons.forEach(b => {
+        b.onclick = () => {
+            document.body.classList.remove('pbg-checker', 'pbg-white', 'pbg-black');
+            document.body.classList.add('pbg-' + b.dataset.bg);
+            pbgButtons.forEach(x => x.classList.toggle('active', x === b));
+        };
+    });
+
+    offsetSlider.oninput = () => applyOffsetValue(parseInt(offsetSlider.value) || 0);
+    offsetInput.oninput = () => applyOffsetValue(parseInt(offsetInput.value) || 0);
+
+    ///////////////////////////////////
+    //// --- Drag chip helpers --- ////
+    ///////////////////////////////////
+
+    function showChip(x, y, text) {
+        dragChip.textContent = text;
+        dragChip.style.left = x + 'px';
+        dragChip.style.top = y + 'px';
+        dragChip.classList.add('show');
+    }
+    function hideChip() { dragChip.classList.remove('show'); }
+
+    ///////////////////////////////////
+    //////////// --- Zoom --- /////////
+    ///////////////////////////////////
 
     zoomWrapper.addEventListener('wheel', (e) => {
         if (!hasImage) return;
-
         e.preventDefault();
-
-        const delta = -e.deltaY;
-        const zoomStep = 0.002;
-
-        zoomLevel += delta * zoomStep;
+        zoomLevel += (-e.deltaY) * 0.002;
         zoomLevel = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoomLevel));
-
-        const canvas = zoomWrapper.querySelector('canvas');
-
-        canvas.style.transform = `scale(${zoomLevel})`;
-    }, {passive: false});
+        zoomWrapper.querySelector('canvas').style.transform = `scale(${zoomLevel})`;
+    }, { passive: false });
 
     zoomWrapper.addEventListener('dblclick', () => {
-        const canvas = zoomWrapper.querySelector('canvas');
-
-        if (zoomLevel > 0.9) {
-            zoomLevel = ZOOMED_OUT;
-        } else {
-            zoomLevel = DEFAULT_ZOOM;
-        }
-
-        canvas.style.transform = `scale(${zoomLevel})`;
+        zoomLevel = zoomLevel > 0.9 ? ZOOMED_OUT : DEFAULT_ZOOM;
+        zoomWrapper.querySelector('canvas').style.transform = `scale(${zoomLevel})`;
     });
 
-
-    // --- Canvas vertical dragging ---
+    ///////////////////////////////////
+    // --- Right canvas -> margin --- /
+    ///////////////////////////////////
 
     zoomWrapper.addEventListener('pointerdown', (e) => {
         if (!hasImage) return;
-
         isDraggingCanvas = true;
         startY = e.clientY;
         startMargin = parseInt(marginInput.value) || 0;
-
         document.getElementById('canvas-box-right').classList.add('dragging');
-
-
     });
 
     window.addEventListener('pointermove', (e) => {
         if (!isDraggingCanvas) return;
-
         const delta = startY - e.clientY;
-
-        const speed = 0.5;
-
-        let newMargin = startMargin + delta * speed;
-
-        // ограничения
+        let newMargin = Math.round(startMargin + delta * 0.5);
         newMargin = Math.max(0, Math.min(newMargin, 300));
-
-        newMargin = Math.round(newMargin);
-
         marginInput.value = newMargin;
         marginSlider.value = newMargin;
-
+        showChip(e.clientX, e.clientY, `Margin ${newMargin}px`);
         processImage();
     });
 
     window.addEventListener('pointerup', () => {
         if (!isDraggingCanvas) return;
-
         isDraggingCanvas = false;
-
         document.getElementById('canvas-box-right').classList.remove('dragging');
-
-
+        hideChip();
         processImage();
     });
+
+    ///////////////////////////////////
+    // --- Left canvas -> offset --- //
+    ///////////////////////////////////
+
+    const leftBox = document.querySelector('.canvas-box.left');
+
+    leftBox.addEventListener('pointerdown', (e) => {
+        if (!hasImage) return;
+        isDraggingLeft = true;
+        startYLeft = e.clientY;
+        startOffset = offset;
+        const rect = leftBox.querySelector('canvas').getBoundingClientRect();
+        leftScaleFactor = rect.height ? (canvas.height / rect.height) : 1;
+        leftBox.classList.add('dragging');
+    });
+
+    window.addEventListener('pointermove', (e) => {
+        if (!isDraggingLeft) return;
+        const delta = e.clientY - startYLeft; // drag down -> shift content down
+        const raw = startOffset + delta * leftScaleFactor;
+        applyOffsetValue(raw);
+        const sign = offset > 0 ? '+' : '';
+        showChip(e.clientX, e.clientY, `Offset ${sign}${offset}px`);
+    });
+
+    window.addEventListener('pointerup', () => {
+        if (!isDraggingLeft) return;
+        isDraggingLeft = false;
+        leftBox.classList.remove('dragging');
+        hideChip();
+        processImage();
+    });
+
+    // init slider fills on first paint
+    refreshSliders();
 
 </script>
 
